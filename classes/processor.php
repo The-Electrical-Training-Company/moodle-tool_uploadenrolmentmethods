@@ -215,6 +215,7 @@ class tool_uploadenrolmentmethods_processor {
                 } else {
                     // Installed, so include its class.
                     global $CFG;
+                    require_once($CFG->dirroot.'/enrol/groupsync/lib.php');
                     require_once($CFG->dirroot.'/enrol/groupsync/locallib.php');
                 }
             }
