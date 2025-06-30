@@ -281,6 +281,7 @@ class tool_uploadenrolmentmethods_processor {
                 $messagerow['parentid'] = $parent->id;
                 $tracker->output($messagerow, false);
                 continue;
+            }
 
             // Check that a valid role is specified.
             if (!array_key_exists($rolename, $rolecache)) {
