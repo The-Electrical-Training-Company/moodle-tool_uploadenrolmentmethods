@@ -1,6 +1,10 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
+## [1.4.2] - 2025-06-30
+### Added
+- Support 'groupsync' enrolment method
+
 ## [1.4.1] - 2025-05-16
 ### Added
 - Update for PHP 8 and code styling compatibility
