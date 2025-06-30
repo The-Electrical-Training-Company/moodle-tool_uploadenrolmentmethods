@@ -34,7 +34,7 @@ require_once($CFG->dirroot.'/admin/tool/uploaduser/locallib.php');
 /**
  * Validates and processes files for uploading a course enrolment methods CSV file
  *
- * @copyright  2013 Frédéric Massart
+ * @copyright  2013 FrÃ©dÃ©ric Massart
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class tool_uploadenrolmentmethods_processor {
@@ -127,6 +127,7 @@ class tool_uploadenrolmentmethods_processor {
 
         // Check if Profile fields method is installed.
         $attributesinstalled = array_key_exists('attributes', core_plugin_manager::instance()->get_plugins_of_type('enrol'));
+        $groupsyncinstalled = array_key_exists('groupsync', core_plugin_manager::instance()->get_plugins_of_type('enrol'));
 
         // Loop through each row of the file.
         while ($line = $this->cir->next()) {
@@ -181,7 +182,7 @@ class tool_uploadenrolmentmethods_processor {
                 continue;
             }
             // Check we've got a valid method.
-            if (!in_array($method, ['meta', 'cohort', 'attributes'])) {
+            if (!in_array($method, ['meta', 'cohort', 'attributes', 'groupsync'])) {
                 $errors++;
                 $messagerow['result'] = get_string('invalidmethod', 'tool_uploadenrolmentmethods');
                 $tracker->output($messagerow, false);
@@ -193,13 +194,28 @@ class tool_uploadenrolmentmethods_processor {
                 if (!$attributesinstalled) {
                     // Not installed, so skip this line.
                     $errors++;
-                    $messagerow['result'] = get_string('attributesnotinstalled', 'tool_uploadenrolmentmethods', $sourcelabel);
+                    $messagerow['result'] = get_string('methodnotinstalled', 'tool_uploadenrolmentmethods', $sourcelabel);
                     $tracker->output($messagerow, false);
                     continue;
                 } else {
                     // Installed, so include its class.
                     global $CFG;
                     require_once($CFG->dirroot.'/enrol/attributes/lib.php');
+                }
+            }
+
+            // If using the groupsync method, check if it is installed.
+            if ($method == 'groupsync') {
+                if (!$groupsyncinstalled) {
+                    // Not installed, so skip this line.
+                    $errors++;
+                    $messagerow['result'] = get_string('methodnotinstalled', 'tool_uploadenrolmentmethods', $sourcelabel);
+                    $tracker->output($messagerow, false);
+                    continue;
+                } else {
+                    // Installed, so include its class.
+                    global $CFG;
+                    require_once($CFG->dirroot.'/enrol/groupsync/locallib.php');
                 }
             }
 
@@ -248,7 +264,7 @@ class tool_uploadenrolmentmethods_processor {
                 } else if ($op != 'add' && count($attrecords) != 1) {
                     // Check the enrolment method we're processing exists.
                     $errors++;
-                    $messagerow['result'] = get_string('attributesnotfound', 'tool_uploadenrolmentmethods', $sourcelabel);
+                    $messagerow['result'] = get_string('methodnotfound', 'tool_uploadenrolmentmethods', $sourcelabel);
                     $tracker->output($messagerow, false);
                     continue;
                 }
@@ -257,6 +273,13 @@ class tool_uploadenrolmentmethods_processor {
                 } else {
                     $parent = $DB->get_record('enrol', ['courseid' => $target->id, 'name' => $sourcelabel]);
                 }
+            } else if ($method == 'groupsync' && (!$parent = $DB->get_record('cohort', ['idnumber' => $sourcelabel]))) {
+                // Check the cohort we're syncing exists.
+                $errors++;
+                $messagerow['result'] = get_string('cohortnotfound', 'tool_uploadenrolmentmethods');
+                $messagerow['parentid'] = $parent->id;
+                $tracker->output($messagerow, false);
+                continue;
             }
 
             // Check that a valid role is specified.
@@ -408,6 +431,8 @@ class tool_uploadenrolmentmethods_processor {
                         $cohorttrace = new null_progress_trace();
                         enrol_cohort_sync($cohorttrace, $target->id);
                         $cohorttrace->finished();
+                    } else if ($method == 'groupsync') {
+                        enrol_groupsync_sync($target->id);
                     }
 
                     // Is it initially disabled?
